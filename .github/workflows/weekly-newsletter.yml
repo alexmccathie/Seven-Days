@@ -1,0 +1,79 @@
+name: Generate & Send Seven Days Newsletter
+
+on:
+  schedule:
+    - cron: '0 6 * * 4'
+
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'send'
+        type: choice
+        options:
+          - send
+          - draft
+          - preview
+      date_range:
+        description: 'Override date range (leave blank for auto)'
+        required: false
+        type: string
+      special_focus:
+        description: 'Optional spotlight topic'
+        required: false
+        type: string
+
+jobs:
+  generate-newsletter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate and publish newsletter
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BEEHIIV_API_KEY: ${{ secrets.BEEHIIV_API_KEY }}
+          BEEHIIV_PUBLICATION_ID: ${{ secrets.BEEHIIV_PUBLICATION_ID }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'send' }}"
+          DATE_RANGE="${{ github.event.inputs.date_range }}"
+          SPECIAL_FOCUS="${{ github.event.inputs.special_focus }}"
+
+          CMD="python generate.py"
+
+          if [ "$MODE" = "draft" ]; then
+            CMD="$CMD --draft"
+          elif [ "$MODE" = "preview" ]; then
+            CMD="$CMD --preview"
+          fi
+
+          if [ -n "$DATE_RANGE" ]; then
+            CMD="$CMD --date-range \"$DATE_RANGE\""
+          fi
+
+          if [ -n "$SPECIAL_FOCUS" ]; then
+            CMD="$CMD --special-focus \"$SPECIAL_FOCUS\""
+          fi
+
+          echo "Running: $CMD"
+          eval $CMD
+
+      - name: Upload output as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsletter-${{ github.run_id }}
+          path: output/
+          retention-days: 30
