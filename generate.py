@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+/#!/usr/bin/env python3
 """
 Seven Days — Automated Weekly Newsletter Generator
 
@@ -181,7 +181,9 @@ def publish_to_beehiiv(subject: str, html_content: str, send: bool = True) -> di
 
     print(f"[Seven Days] Publishing to Beehiiv (send={send})...")
     resp = requests.post(url, headers=headers, json=payload, timeout=30)
-    resp.raise_for_status()
+    if not resp.ok:
+        print(f"[Seven Days] Beehiiv error {resp.status_code}: {resp.text}")
+        resp.raise_for_status()
 
     result = resp.json()
     print(f"[Seven Days] Published! Post ID: {result.get('data', {}).get('id', 'unknown')}")
