@@ -75,5 +75,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: newsletter-${{ github.run_id }}
-          path: output/
+          path: ${{ github.workspace }}/output/
           retention-days: 30
