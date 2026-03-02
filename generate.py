@@ -21,7 +21,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import anthropic
-import requests
 import markdown
 
 
@@ -31,8 +30,6 @@ import markdown
 
 CLAUDE_MODEL = "claude-sonnet-4-20250514"
 MAX_TOKENS = 8192
-
-BEEHIIV_API_BASE = "https://api.beehiiv.com/v2"
 
 
 # ---------------------------------------------------------------------------
@@ -151,45 +148,6 @@ def markdown_to_email_html(md_content: str) -> str:
 
     return styled_html
 
-
-# ---------------------------------------------------------------------------
-# Beehiiv publishing
-# ---------------------------------------------------------------------------
-
-def publish_to_beehiiv(subject: str, html_content: str, send: bool = True) -> dict:
-    """Create a post in Beehiiv and optionally send it."""
-    api_key = os.environ["BEEHIIV_API_KEY"]
-    pub_id = os.environ["BEEHIIV_PUBLICATION_ID"]
-
-    url = f"{BEEHIIV_API_BASE}/publications/{pub_id}/posts"
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-
-    payload = {
-        "title": subject,
-        "subtitle": "Your weekly global news briefing",
-        "status": "confirmed" if send else "draft",
-        "content_html": html_content,
-        "send_to": "all" if send else None,
-    }
-
-    # Remove None values
-    payload = {k: v for k, v in payload.items() if v is not None}
-
-    print(f"[Seven Days] Publishing to Beehiiv (send={send})...")
-    resp = requests.post(url, headers=headers, json=payload, timeout=30)
-    if not resp.ok:
-        print(f"[Seven Days] Beehiiv error {resp.status_code}: {resp.text}")
-        resp.raise_for_status()
-
-    result = resp.json()
-    print(f"[Seven Days] Published! Post ID: {result.get('data', {}).get('id', 'unknown')}")
-    return result
-
-
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -225,20 +183,9 @@ def main():
     print(f"[Seven Days] HTML saved: {html_path}")
 
     if args.preview:
-        print("[Seven Days] Preview mode — not publishing.")
+        print("[Seven Days] Preview mode — files saved locally.")
         return
 
-    # Build subject line
-    week_label = get_week_label()
-    subject = f"Seven Days — {week_label}"
-
-    # Publish
-    should_send = not args.draft
-    publish_to_beehiiv(subject, html_content, send=should_send)
-
-    status = "sent" if should_send else "saved as draft"
-    print(f"[Seven Days] Done! Newsletter {status}.")
-
-
-if __name__ == "__main__":
-    main()
+    print("[Seven Days] Done! Newsletter ready for download.")
+    print(f"[Seven Days] Markdown: {md_path}")
+    print(f"[Seven Days] HTML: {html_path}")
